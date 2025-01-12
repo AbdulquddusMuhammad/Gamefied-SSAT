@@ -1,0 +1,952 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <style>
+      .container {
+        max-width: 600px;
+        margin: 20px auto;
+        padding: 20px;
+        font-family: Arial, sans-serif;
+        background-color: #f9f9f9;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      }
+
+      .progress-bar {
+        width: 100%;
+        height: 8px;
+        background-color: #eee;
+        border-radius: 4px;
+        margin-bottom: 20px;
+      }
+
+      .progress-fill {
+        height: 100%;
+        background-color: #007bff;
+        border-radius: 4px;
+        transition: width 0.3s ease;
+      }
+
+      .question {
+        font-size: 1.1em;
+        line-height: 1.6;
+        margin-bottom: 20px;
+        color: #333;
+      }
+
+      .options {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+
+      .option {
+        padding: 12px 16px;
+        border: 2px solid #ddd;
+        border-radius: 6px;
+        cursor: pointer;
+        transition: all 0.2s;
+        background-color: white;
+      }
+
+      .option:hover {
+        border-color: #007bff;
+        background-color: #f0f7ff;
+      }
+
+      .option.selected {
+        border-color: #007bff;
+        background-color: #e6f2ff;
+      }
+
+      .option.correct {
+        border-color: #28a745;
+        background-color: #d4edda;
+      }
+
+      .option.incorrect {
+        border-color: #dc3545;
+        background-color: #f8d7da;
+      }
+
+      .feedback {
+        margin-top: 20px;
+        padding: 15px;
+        border-radius: 6px;
+        display: none;
+      }
+
+      .feedback.success {
+        background-color: #d4edda;
+        color: #155724;
+        border: 1px solid #c3e6cb;
+      }
+
+      .feedback.error {
+        background-color: #f8d7da;
+        color: #721c24;
+        border: 1px solid #f5c6cb;
+      }
+
+      .explanation {
+        margin-top: 20px;
+        padding: 15px;
+        background-color: #e9ecef;
+        border-radius: 6px;
+        display: none;
+      }
+
+      .button-group {
+        display: flex;
+        gap: 10px;
+        margin-top: 20px;
+      }
+
+      button {
+        padding: 10px 20px;
+        background-color: #007bff;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 1em;
+      }
+
+      button:hover {
+        background-color: #0056b3;
+      }
+
+      button:disabled {
+        background-color: #ccc;
+        cursor: not-allowed;
+      }
+
+      .score-display {
+        text-align: right;
+        margin-bottom: 10px;
+        font-weight: bold;
+        color: #333;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="progress-bar">
+        <div class="progress-fill"></div>
+      </div>
+      <div class="score-display">
+        Score: <span id="score">0</span>/<span id="total">0</span>
+      </div>
+      <div class="question"></div>
+      <div class="options"></div>
+
+      <div class="button-group">
+        <button id="checkAnswer" disabled>Check Answer</button>
+        <button id="nextQuestion" style="display: none">Next Question</button>
+      </div>
+
+      <div class="feedback"></div>
+      <div class="explanation"></div>
+    </div>
+
+    <script>
+      const questions = [
+        {
+          question:
+            "Select the word that is most similar in meaning to the given word: HAPPY.",
+          options: [
+            { text: "A) Sad", value: "Sad" },
+            { text: "B) Joyful", value: "Joyful" },
+            { text: "C) Angry", value: "Angry" },
+            { text: "D) Confused", value: "Confused" },
+          ],
+          correctAnswer: "Joyful",
+          explanation: `
+          <h3>Solution Explanation:</h3>
+          <p>The word "HAPPY" means feeling or showing pleasure or contentment. Among the options:</p>
+          <ol>
+            <li>"Sad" is the opposite of "HAPPY".</li>
+            <li>"Joyful" means showing happiness, making it the correct answer.</li>
+            <li>"Angry" and "Confused" are unrelated to happiness.</li>
+          </ol>
+        `,
+        },
+        {
+          question:
+            "Select the word that is the opposite in meaning to the given word: LARGE.",
+          options: [
+            { text: "A) Huge", value: "Huge" },
+            { text: "B) Small", value: "Small" },
+            { text: "C) Gigantic", value: "Gigantic" },
+            { text: "D) Massive", value: "Massive" },
+          ],
+          correctAnswer: "Small",
+          explanation: `
+          <h3>Solution Explanation:</h3>
+          <p>The word "LARGE" refers to something big in size. Among the options:</p>
+          <ol>
+            <li>"Huge," "Gigantic," and "Massive" are synonyms for "LARGE".</li>
+            <li>"Small" is the opposite of "LARGE," making it the correct answer.</li>
+          </ol>
+        `,
+        },
+        {
+          question:
+            "Select the pair of words that best completes the analogy: PENCIL is to WRITE as SCISSORS is to ...",
+          options: [
+            { text: "A) Cut", value: "Cut" },
+            { text: "B) Erase", value: "Erase" },
+            { text: "C) Sharpen", value: "Sharpen" },
+            { text: "D) Measure", value: "Measure" },
+          ],
+          correctAnswer: "Cut",
+          explanation: `
+          <h3>Solution Explanation:</h3>
+          <p>In this analogy:</p>
+          <ol>
+            <li>A "PENCIL" is used to "WRITE".</li>
+            <li>Similarly, "SCISSORS" are used to "CUT".</li>
+            <li>The other options do not represent the primary function of scissors.</li>
+          </ol>
+        `,
+        },
+        {
+          question: "Which word is closest in meaning to the word ENORMOUS?",
+          options: [
+            { text: "A) Tiny", value: "Tiny" },
+            { text: "B) Huge", value: "Huge" },
+            { text: "C) Narrow", value: "Narrow" },
+            { text: "D) Weak", value: "Weak" },
+          ],
+          correctAnswer: "Huge",
+          explanation: `
+          <h3>Solution Explanation:</h3>
+          <ol>
+            <li>"Tiny" is the opposite of "ENORMOUS".</li>
+            <li>"Huge" is a synonym for "ENORMOUS" and is the correct answer.</li>
+            <li>"Narrow" and "Weak" are unrelated in meaning.</li>
+          </ol>
+        `,
+        },
+        {
+          question:
+            "Select the pair of words that best completes the analogy: CAT is to MEOW as DOG is to ...",
+          options: [
+            { text: "A) Bark", value: "Bark" },
+            { text: "B) Purr", value: "Purr" },
+            { text: "C) Growl", value: "Growl" },
+            { text: "D) Sniff", value: "Sniff" },
+          ],
+          correctAnswer: "Bark",
+          explanation: `
+          <h3>Solution Explanation:</h3>
+          <p>In this analogy:</p>
+          <ol>
+            <li>A "CAT" makes the sound "MEOW".</li>
+            <li>Similarly, a "DOG" makes the sound "BARK".</li>
+            <li>The other options represent actions or sounds but are not the primary sound a dog makes.</li>
+          </ol>
+        `,
+        },
+        {
+          question:
+            "Select the word that is most similar in meaning to the given word: BRIGHT.",
+          options: [
+            { text: "A) Dull", value: "Dull" },
+            { text: "B) Shiny", value: "Shiny" },
+            { text: "C) Dark", value: "Dark" },
+            { text: "D) Cloudy", value: "Cloudy" },
+          ],
+          correctAnswer: "Shiny",
+          explanation: `
+      <h3>Solution Explanation:</h3>
+      <p>The word "BRIGHT" means full of light or radiant. Among the options:</p>
+      <ol>
+        <li>"Dull" and "Dark" are opposites of "BRIGHT".</li>
+        <li>"Shiny" is a synonym for "BRIGHT," making it the correct answer.</li>
+        <li>"Cloudy" does not relate to brightness.</li>
+      </ol>
+    `,
+        },
+        {
+          question:
+            "Select the word that is the opposite in meaning to the given word: POLITE.",
+          options: [
+            { text: "A) Rude", value: "Rude" },
+            { text: "B) Kind", value: "Kind" },
+            { text: "C) Respectful", value: "Respectful" },
+            { text: "D) Courteous", value: "Courteous" },
+          ],
+          correctAnswer: "Rude",
+          explanation: `
+      <h3>Solution Explanation:</h3>
+      <p>The word "POLITE" refers to showing good manners. Among the options:</p>
+      <ol>
+        <li>"Rude" is the opposite of "POLITE," making it the correct answer.</li>
+        <li>"Kind," "Respectful," and "Courteous" are synonyms of "POLITE".</li>
+      </ol>
+    `,
+        },
+        {
+          question:
+            "Select the pair of words that best completes the analogy: BIRD is to FLY as FISH is to ...",
+          options: [
+            { text: "A) Swim", value: "Swim" },
+            { text: "B) Crawl", value: "Crawl" },
+            { text: "C) Jump", value: "Jump" },
+            { text: "D) Dive", value: "Dive" },
+          ],
+          correctAnswer: "Swim",
+          explanation: `
+      <h3>Solution Explanation:</h3>
+      <p>In this analogy:</p>
+      <ol>
+        <li>A "BIRD" moves through the air by "FLYING".</li>
+        <li>Similarly, a "FISH" moves through water by "SWIMMING".</li>
+        <li>The other options do not represent the primary way a fish moves.</li>
+      </ol>
+    `,
+        },
+        {
+          question: "Which word is closest in meaning to the word GENEROUS?",
+          options: [
+            { text: "A) Selfish", value: "Selfish" },
+            { text: "B) Kind", value: "Kind" },
+            { text: "C) Greedy", value: "Greedy" },
+            { text: "D) Thoughtless", value: "Thoughtless" },
+          ],
+          correctAnswer: "Kind",
+          explanation: `
+      <h3>Solution Explanation:</h3>
+      <p>The word "GENEROUS" means willing to give or share. Among the options:</p>
+      <ol>
+        <li>"Selfish," "Greedy," and "Thoughtless" are opposites of "GENEROUS".</li>
+        <li>"Kind" is the closest in meaning, making it the correct answer.</li>
+      </ol>
+    `,
+        },
+        {
+          question:
+            "Select the pair of words that best completes the analogy: HAND is to FINGER as FOOT is to ...",
+          options: [
+            { text: "A) Toe", value: "Toe" },
+            { text: "B) Nail", value: "Nail" },
+            { text: "C) Heel", value: "Heel" },
+            { text: "D) Sole", value: "Sole" },
+          ],
+          correctAnswer: "Toe",
+          explanation: `
+      <h3>Solution Explanation:</h3>
+      <p>In this analogy:</p>
+      <ol>
+        <li>A "HAND" contains "FINGERS".</li>
+        <li>Similarly, a "FOOT" contains "TOES".</li>
+        <li>The other options are parts of the foot but do not match the analogy.</li>
+      </ol>
+    `,
+        },
+        {
+          question:
+            "Select the word that is most similar in meaning to the given word: QUICK.",
+          options: [
+            { text: "A) Slow", value: "Slow" },
+            { text: "B) Fast", value: "Fast" },
+            { text: "C) Steady", value: "Steady" },
+            { text: "D) Weak", value: "Weak" },
+          ],
+          correctAnswer: "Fast",
+          explanation: `
+      <h3>Solution Explanation:</h3>
+      <p>The word "QUICK" means moving or doing something rapidly. Among the options:</p>
+      <ol>
+        <li>"Slow" is the opposite of "QUICK".</li>
+        <li>"Fast" is a synonym for "QUICK," making it the correct answer.</li>
+        <li>"Steady" and "Weak" do not relate to speed.</li>
+      </ol>
+    `,
+        },
+        {
+          question:
+            "Select the word that is the opposite in meaning to the given word: FRIENDLY.",
+          options: [
+            { text: "A) Hostile", value: "Hostile" },
+            { text: "B) Warm", value: "Warm" },
+            { text: "C) Welcoming", value: "Welcoming" },
+            { text: "D) Kind", value: "Kind" },
+          ],
+          correctAnswer: "Hostile",
+          explanation: `
+      <h3>Solution Explanation:</h3>
+      <p>The word "FRIENDLY" means acting in a kind and helpful way. Among the options:</p>
+      <ol>
+        <li>"Hostile" means unfriendly or antagonistic, making it the opposite of "FRIENDLY" and the correct answer.</li>
+        <li>"Warm," "Welcoming," and "Kind" are synonyms of "FRIENDLY".</li>
+      </ol>
+    `,
+        },
+        {
+          question:
+            "Select the pair of words that best completes the analogy: CLOCK is to TIME as THERMOMETER is to ...",
+          options: [
+            { text: "A) Weather", value: "Weather" },
+            { text: "B) Heat", value: "Heat" },
+            { text: "C) Temperature", value: "Temperature" },
+            { text: "D) Pressure", value: "Pressure" },
+          ],
+          correctAnswer: "Temperature",
+          explanation: `
+      <h3>Solution Explanation:</h3>
+      <p>In this analogy:</p>
+      <ol>
+        <li>A "CLOCK" is used to measure "TIME".</li>
+        <li>Similarly, a "THERMOMETER" is used to measure "TEMPERATURE".</li>
+        <li>The other options do not match the primary function of a thermometer.</li>
+      </ol>
+    `,
+        },
+        {
+          question: "Which word is closest in meaning to the word ANGRY?",
+          options: [
+            { text: "A) Happy", value: "Happy" },
+            { text: "B) Furious", value: "Furious" },
+            { text: "C) Sad", value: "Sad" },
+            { text: "D) Excited", value: "Excited" },
+          ],
+          correctAnswer: "Furious",
+          explanation: `
+      <h3>Solution Explanation:</h3>
+      <p>The word "ANGRY" refers to feeling strong annoyance or displeasure. Among the options:</p>
+      <ol>
+        <li>"Happy," "Sad," and "Excited" are emotions unrelated to anger.</li>
+        <li>"Furious" is a synonym for "ANGRY" and is the correct answer.</li>
+      </ol>
+    `,
+        },
+        {
+          question:
+            "Select the pair of words that best completes the analogy: TREE is to FOREST as STAR is to ...",
+          options: [
+            { text: "A) Sky", value: "Sky" },
+            { text: "B) Galaxy", value: "Galaxy" },
+            { text: "C) Night", value: "Night" },
+            { text: "D) Planet", value: "Planet" },
+          ],
+          correctAnswer: "Galaxy",
+          explanation: `
+      <h3>Solution Explanation:</h3>
+      <p>In this analogy:</p>
+      <ol>
+        <li>A "TREE" is part of a "FOREST".</li>
+        <li>Similarly, a "STAR" is part of a "GALAXY".</li>
+        <li>The other options, while related to stars, do not describe a group of stars like "GALAXY" does.</li>
+      </ol>
+    `,
+        },
+        {
+          question:
+            "Select the word that is most similar in meaning to the given word: BEGIN.",
+          options: [
+            { text: "A) End", value: "End" },
+            { text: "B) Start", value: "Start" },
+            { text: "C) Pause", value: "Pause" },
+            { text: "D) Stop", value: "Stop" },
+          ],
+          correctAnswer: "Start",
+          explanation: `
+      <h3>Solution Explanation:</h3>
+      <p>The word "BEGIN" means to start or commence something. Among the options:</p>
+      <ol>
+        <li>"End," "Pause," and "Stop" are unrelated or opposite to beginning.</li>
+        <li>"Start" is a synonym for "BEGIN," making it the correct answer.</li>
+      </ol>
+    `,
+        },
+        {
+          question:
+            "Select the word that is the opposite in meaning to the given word: STRONG.",
+          options: [
+            { text: "A) Powerful", value: "Powerful" },
+            { text: "B) Weak", value: "Weak" },
+            { text: "C) Sturdy", value: "Sturdy" },
+            { text: "D) Tough", value: "Tough" },
+          ],
+          correctAnswer: "Weak",
+          explanation: `
+      <h3>Solution Explanation:</h3>
+      <p>The word "STRONG" refers to having great power or strength. Among the options:</p>
+      <ol>
+        <li>"Weak" is the opposite of "STRONG," making it the correct answer.</li>
+        <li>"Powerful," "Sturdy," and "Tough" are synonyms of "STRONG".</li>
+      </ol>
+    `,
+        },
+        {
+          question:
+            "Select the pair of words that best completes the analogy: CAR is to ROAD as BOAT is to ...",
+          options: [
+            { text: "A) River", value: "River" },
+            { text: "B) Ocean", value: "Ocean" },
+            { text: "C) Water", value: "Water" },
+            { text: "D) Harbor", value: "Harbor" },
+          ],
+          correctAnswer: "Water",
+          explanation: `
+      <h3>Solution Explanation:</h3>
+      <p>In this analogy:</p>
+      <ol>
+        <li>A "CAR" travels on a "ROAD".</li>
+        <li>Similarly, a "BOAT" travels on "WATER".</li>
+        <li>The other options are types of water bodies but do not represent the general medium of travel for a boat.</li>
+      </ol>
+    `,
+        },
+        {
+          question: "Which word is closest in meaning to the word BEAUTIFUL?",
+          options: [
+            { text: "A) Ugly", value: "Ugly" },
+            { text: "B) Pretty", value: "Pretty" },
+            { text: "C) Plain", value: "Plain" },
+            { text: "D) Harsh", value: "Harsh" },
+          ],
+          correctAnswer: "Pretty",
+          explanation: `
+      <h3>Solution Explanation:</h3>
+      <p>The word "BEAUTIFUL" means pleasing to look at or lovely. Among the options:</p>
+      <ol>
+        <li>"Ugly" is the opposite of "BEAUTIFUL".</li>
+        <li>"Pretty" is a synonym for "BEAUTIFUL" and is the correct answer.</li>
+        <li>"Plain" and "Harsh" are unrelated in meaning.</li>
+      </ol>
+    `,
+        },
+        {
+          question:
+            "Select the pair of words that best completes the analogy: KNIFE is to CUT as BRUSH is to ...",
+          options: [
+            { text: "A) Paint", value: "Paint" },
+            { text: "B) Sweep", value: "Sweep" },
+            { text: "C) Comb", value: "Comb" },
+            { text: "D) Clean", value: "Clean" },
+          ],
+          correctAnswer: "Paint",
+          explanation: `
+      <h3>Solution Explanation:</h3>
+      <p>In this analogy:</p>
+      <ol>
+        <li>A "KNIFE" is used to "CUT".</li>
+        <li>Similarly, a "BRUSH" is used to "PAINT".</li>
+        <li>The other options represent secondary uses of different brushes but do not match this analogy.</li>
+      </ol>
+    `,
+        },
+        {
+          question:
+            "Select the word that is most similar in meaning to the given word: HAPPY.",
+          options: [
+            { text: "A) Sad", value: "Sad" },
+            { text: "B) Joyful", value: "Joyful" },
+            { text: "C) Angry", value: "Angry" },
+            { text: "D) Tired", value: "Tired" },
+          ],
+          correctAnswer: "Joyful",
+          explanation: `
+      <h3>Solution Explanation:</h3>
+      <p>The word "HAPPY" means feeling pleasure or contentment. Among the options:</p>
+      <ol>
+        <li>"Sad" and "Angry" are opposites of "HAPPY".</li>
+        <li>"Joyful" is a synonym for "HAPPY," making it the correct answer.</li>
+        <li>"Tired" is unrelated to emotions of happiness.</li>
+      </ol>
+    `,
+        },
+        {
+          question:
+            "Select the word that is the opposite in meaning to the given word: QUIET.",
+          options: [
+            { text: "A) Noisy", value: "Noisy" },
+            { text: "B) Silent", value: "Silent" },
+            { text: "C) Calm", value: "Calm" },
+            { text: "D) Peaceful", value: "Peaceful" },
+          ],
+          correctAnswer: "Noisy",
+          explanation: `
+      <h3>Solution Explanation:</h3>
+      <p>The word "QUIET" refers to an absence of noise. Among the options:</p>
+      <ol>
+        <li>"Noisy" is the opposite of "QUIET," making it the correct answer.</li>
+        <li>"Silent," "Calm," and "Peaceful" are synonyms or related to "QUIET".</li>
+      </ol>
+    `,
+        },
+        {
+          question:
+            "Select the pair of words that best completes the analogy: DOG is to BARK as CAT is to ...",
+          options: [
+            { text: "A) Meow", value: "Meow" },
+            { text: "B) Roar", value: "Roar" },
+            { text: "C) Growl", value: "Growl" },
+            { text: "D) Chirp", value: "Chirp" },
+          ],
+          correctAnswer: "Meow",
+          explanation: `
+      <h3>Solution Explanation:</h3>
+      <p>In this analogy:</p>
+      <ol>
+        <li>A "DOG" makes a sound called a "BARK".</li>
+        <li>Similarly, a "CAT" makes a sound called a "MEOW".</li>
+        <li>The other options represent sounds of different animals and do not fit this analogy.</li>
+      </ol>
+    `,
+        },
+        {
+          question: "Which word is closest in meaning to the word DIFFICULT?",
+          options: [
+            { text: "A) Hard", value: "Hard" },
+            { text: "B) Simple", value: "Simple" },
+            { text: "C) Easy", value: "Easy" },
+            { text: "D) Clear", value: "Clear" },
+          ],
+          correctAnswer: "Hard",
+          explanation: `
+      <h3>Solution Explanation:</h3>
+      <p>The word "DIFFICULT" means requiring effort or challenging. Among the options:</p>
+      <ol>
+        <li>"Simple," "Easy," and "Clear" are unrelated or opposites of "DIFFICULT".</li>
+        <li>"Hard" is a synonym for "DIFFICULT," making it the correct answer.</li>
+      </ol>
+    `,
+        },
+        {
+          question:
+            "Select the pair of words that best completes the analogy: EAR is to HEAR as EYE is to ...",
+          options: [
+            { text: "A) See", value: "See" },
+            { text: "B) Smell", value: "Smell" },
+            { text: "C) Taste", value: "Taste" },
+            { text: "D) Touch", value: "Touch" },
+          ],
+          correctAnswer: "See",
+          explanation: `
+      <h3>Solution Explanation:</h3>
+      <p>In this analogy:</p>
+      <ol>
+        <li>An "EAR" is used to "HEAR".</li>
+        <li>Similarly, an "EYE" is used to "SEE".</li>
+        <li>The other options represent senses connected to different body parts and do not match the analogy.</li>
+      </ol>
+    `,
+        },
+        {
+          question:
+            "Select the word that is most similar in meaning to the given word: LARGE.",
+          options: [
+            { text: "A) Small", value: "Small" },
+            { text: "B) Big", value: "Big" },
+            { text: "C) Tiny", value: "Tiny" },
+            { text: "D) Little", value: "Little" },
+          ],
+          correctAnswer: "Big",
+          explanation: `
+      <h3>Solution Explanation:</h3>
+      <p>The word "LARGE" means of great size. Among the options:</p>
+      <ol>
+        <li>"Small," "Tiny," and "Little" are opposites of "LARGE".</li>
+        <li>"Big" is a synonym for "LARGE," making it the correct answer.</li>
+      </ol>
+    `,
+        },
+        {
+          question:
+            "Select the word that is the opposite in meaning to the given word: FAST.",
+          options: [
+            { text: "A) Quick", value: "Quick" },
+            { text: "B) Slow", value: "Slow" },
+            { text: "C) Rapid", value: "Rapid" },
+            { text: "D) Swift", value: "Swift" },
+          ],
+          correctAnswer: "Slow",
+          explanation: `
+      <h3>Solution Explanation:</h3>
+      <p>The word "FAST" refers to moving quickly. Among the options:</p>
+      <ol>
+        <li>"Slow" is the opposite of "FAST," making it the correct answer.</li>
+        <li>"Quick," "Rapid," and "Swift" are synonyms of "FAST".</li>
+      </ol>
+    `,
+        },
+        {
+          question:
+            "Select the pair of words that best completes the analogy: PENCIL is to WRITE as ERASER is to ...",
+          options: [
+            { text: "A) Clean", value: "Clean" },
+            { text: "B) Erase", value: "Erase" },
+            { text: "C) Cut", value: "Cut" },
+            { text: "D) Fix", value: "Fix" },
+          ],
+          correctAnswer: "Erase",
+          explanation: `
+      <h3>Solution Explanation:</h3>
+      <p>In this analogy:</p>
+      <ol>
+        <li>A "PENCIL" is used to "WRITE".</li>
+        <li>Similarly, an "ERASER" is used to "ERASE".</li>
+        <li>The other options do not describe the main function of an eraser.</li>
+      </ol>
+    `,
+        },
+        {
+          question: "Which word is closest in meaning to the word BRAVE?",
+          options: [
+            { text: "A) Scared", value: "Scared" },
+            { text: "B) Fearless", value: "Fearless" },
+            { text: "C) Weak", value: "Weak" },
+            { text: "D) Shy", value: "Shy" },
+          ],
+          correctAnswer: "Fearless",
+          explanation: `
+      <h3>Solution Explanation:</h3>
+      <p>The word "BRAVE" means showing courage or not being afraid. Among the options:</p>
+      <ol>
+        <li>"Scared," "Weak," and "Shy" are opposites or unrelated to "BRAVE".</li>
+        <li>"Fearless" is a synonym for "BRAVE," making it the correct answer.</li>
+      </ol>
+    `,
+        },
+        {
+          question:
+            "Select the pair of words that best completes the analogy: BIRD is to FLY as FISH is to ...",
+          options: [
+            { text: "A) Swim", value: "Swim" },
+            { text: "B) Jump", value: "Jump" },
+            { text: "C) Run", value: "Run" },
+            { text: "D) Walk", value: "Walk" },
+          ],
+          correctAnswer: "Swim",
+          explanation: `
+      <h3>Solution Explanation:</h3>
+      <p>In this analogy:</p>
+      <ol>
+        <li>A "BIRD" moves through the air by "FLYING".</li>
+        <li>Similarly, a "FISH" moves through water by "SWIMMING".</li>
+        <li>The other options describe movements that are not characteristic of a fish.</li>
+      </ol>
+    `,
+        },
+        {
+          question:
+            "Select the word that is most similar in meaning to the given word: QUICK.",
+          options: [
+            { text: "A) Slow", value: "Slow" },
+            { text: "B) Fast", value: "Fast" },
+            { text: "C) Lazy", value: "Lazy" },
+            { text: "D) Quiet", value: "Quiet" },
+          ],
+          correctAnswer: "Fast",
+          explanation: `
+      <h3>Solution Explanation:</h3>
+      <p>The word "QUICK" means happening or moving fast. Among the options:</p>
+      <ol>
+        <li>"Slow," "Lazy," and "Quiet" are unrelated or opposite to "QUICK".</li>
+        <li>"Fast" is a synonym for "QUICK," making it the correct answer.</li>
+      </ol>
+    `,
+        },
+        {
+          question:
+            "Select the word that is the opposite in meaning to the given word: OLD.",
+          options: [
+            { text: "A) Ancient", value: "Ancient" },
+            { text: "B) New", value: "New" },
+            { text: "C) Worn", value: "Worn" },
+            { text: "D) Antique", value: "Antique" },
+          ],
+          correctAnswer: "New",
+          explanation: `
+      <h3>Solution Explanation:</h3>
+      <p>The word "OLD" refers to something that has existed for a long time. Among the options:</p>
+      <ol>
+        <li>"New" is the opposite of "OLD," making it the correct answer.</li>
+        <li>"Ancient," "Worn," and "Antique" are related to "OLD" in meaning.</li>
+      </ol>
+    `,
+        },
+        {
+          question:
+            "Select the pair of words that best completes the analogy: TEACHER is to SCHOOL as DOCTOR is to ...",
+          options: [
+            { text: "A) Office", value: "Office" },
+            { text: "B) Hospital", value: "Hospital" },
+            { text: "C) Clinic", value: "Clinic" },
+            { text: "D) Patient", value: "Patient" },
+          ],
+          correctAnswer: "Hospital",
+          explanation: `
+      <h3>Solution Explanation:</h3>
+      <p>In this analogy:</p>
+      <ol>
+        <li>A "TEACHER" works at a "SCHOOL".</li>
+        <li>Similarly, a "DOCTOR" typically works at a "HOSPITAL".</li>
+        <li>The other options do not represent the primary workplace of a doctor.</li>
+      </ol>
+    `,
+        },
+        {
+          question: "Which word is closest in meaning to the word FRIENDLY?",
+          options: [
+            { text: "A) Hostile", value: "Hostile" },
+            { text: "B) Kind", value: "Kind" },
+            { text: "C) Angry", value: "Angry" },
+            { text: "D) Rude", value: "Rude" },
+          ],
+          correctAnswer: "Kind",
+          explanation: `
+      <h3>Solution Explanation:</h3>
+      <p>The word "FRIENDLY" means acting in a kind or pleasant way. Among the options:</p>
+      <ol>
+        <li>"Hostile," "Angry," and "Rude" are opposites or unrelated to "FRIENDLY".</li>
+        <li>"Kind" is a synonym for "FRIENDLY," making it the correct answer.</li>
+      </ol>
+    `,
+        },
+        {
+          question:
+            "Select the pair of words that best completes the analogy: HAND is to FINGER as FOOT is to ...",
+          options: [
+            { text: "A) Toe", value: "Toe" },
+            { text: "B) Heel", value: "Heel" },
+            { text: "C) Shoe", value: "Shoe" },
+            { text: "D) Step", value: "Step" },
+          ],
+          correctAnswer: "Toe",
+          explanation: `
+      <h3>Solution Explanation:</h3>
+      <p>In this analogy:</p>
+      <ol>
+        <li>A "HAND" contains "FINGERS".</li>
+        <li>Similarly, a "FOOT" contains "TOES".</li>
+        <li>The other options do not represent a part of the foot itself.</li>
+      </ol>
+    `,
+        },
+      ];
+      let currentQuestion = 0;
+      let score = 0;
+      let selectedOption = null;
+
+      const questionDiv = document.querySelector(".question");
+      const optionsDiv = document.querySelector(".options");
+      const checkButton = document.getElementById("checkAnswer");
+      const nextButton = document.getElementById("nextQuestion");
+      const feedbackDiv = document.querySelector(".feedback");
+      const explanationDiv = document.querySelector(".explanation");
+      const progressFill = document.querySelector(".progress-fill");
+      const scoreDisplay = document.getElementById("score");
+      const totalDisplay = document.getElementById("total");
+
+      function displayQuestion(index) {
+        const question = questions[index];
+        questionDiv.textContent = question.question;
+        optionsDiv.innerHTML = "";
+
+        question.options.forEach((option) => {
+          const div = document.createElement("div");
+          div.className = "option";
+          div.textContent = option.text;
+          div.dataset.value = option.value;
+          optionsDiv.appendChild(div);
+        });
+
+        // Reset state
+        selectedOption = null;
+        checkButton.disabled = true;
+        nextButton.style.display = "none";
+        feedbackDiv.style.display = "none";
+        explanationDiv.style.display = "none";
+
+        // Update progress
+        progressFill.style.width = `${((index + 1) / questions.length) * 100}%`;
+        scoreDisplay.textContent = score;
+        totalDisplay.textContent = questions.length;
+      }
+
+      optionsDiv.addEventListener("click", (e) => {
+        if (e.target.classList.contains("option")) {
+          // Remove selected class from all options
+          optionsDiv
+            .querySelectorAll(".option")
+            .forEach((opt) => opt.classList.remove("selected"));
+
+          // Add selected class to clicked option
+          e.target.classList.add("selected");
+          selectedOption = e.target;
+          checkButton.disabled = false;
+        }
+      });
+
+      checkButton.addEventListener("click", () => {
+        const selectedValue = selectedOption.dataset.value;
+        const correctAnswer = questions[currentQuestion].correctAnswer;
+
+        // Remove any previous feedback classes
+        optionsDiv.querySelectorAll(".option").forEach((opt) => {
+          opt.classList.remove("correct", "incorrect");
+        });
+
+        if (selectedValue === correctAnswer) {
+          feedbackDiv.className = "feedback success";
+          feedbackDiv.textContent = "Correct! Well done!";
+          selectedOption.classList.add("correct");
+          score++;
+          scoreDisplay.textContent = score;
+        } else {
+          feedbackDiv.className = "feedback error";
+          feedbackDiv.textContent = "Incorrect. Try again!";
+          selectedOption.classList.add("incorrect");
+          // Show the correct answer
+          optionsDiv.querySelectorAll(".option").forEach((opt) => {
+            if (parseFloat(opt.dataset.value) === correctAnswer) {
+              opt.classList.add("correct");
+            }
+          });
+        }
+
+        feedbackDiv.style.display = "block";
+        explanationDiv.style.display = "block";
+        explanationDiv.innerHTML = questions[currentQuestion].explanation;
+        checkButton.disabled = true;
+
+        if (currentQuestion < questions.length - 1) {
+          nextButton.style.display = "block";
+        } else {
+          nextButton.style.display = "block";
+          nextButton.textContent = "See Final Score";
+        }
+      });
+
+      nextButton.addEventListener("click", () => {
+        if (currentQuestion < questions.length - 1) {
+          currentQuestion++;
+          displayQuestion(currentQuestion);
+        } else {
+          // Show final score
+          questionDiv.innerHTML = `
+                        <h2>Quiz Complete!</h2>
+                        <p>Your final score: ${score}/${questions.length}</p>
+                        <p>Percentage: ${Math.round(
+                          (score / questions.length) * 100
+                        )}%</p>
+                    `;
+          optionsDiv.innerHTML = "";
+          checkButton.style.display = "none";
+          nextButton.style.display = "none";
+          feedbackDiv.style.display = "none";
+          explanationDiv.style.display = "none";
+        }
+      });
+
+      // Initialize first question
+      displayQuestion(0);
+      console.log(questions.length);
+    </script>
+  </body>
+</html>
